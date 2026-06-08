@@ -15,7 +15,7 @@ export default function LandingPage() {
 
   // Supabase requires an email — we derive one from the username internally
   function toEmail(u: string) {
-    return `${u.trim().toLowerCase()}@musicranker.app`
+    return `${u.trim().toLowerCase()}@example.com`
   }
 
   async function handleAuth(e: React.FormEvent) {
