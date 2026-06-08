@@ -5,42 +5,62 @@ import { createClient } from '@/lib/supabase/client'
 import { Music } from 'lucide-react'
 
 export default function LandingPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
 
   const supabase = createClient()
+
+  // Supabase requires an email — we derive one from the username internally
+  function toEmail(u: string) {
+    return `${u.trim().toLowerCase()}@musicranker.app`
+  }
 
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setMessage(null)
+
+    const email = toEmail(username)
 
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
-      else window.location.href = '/dashboard'
+      if (error) {
+        setError('Invalid username or password')
+      } else {
+        window.location.href = '/dashboard'
+      }
     } else {
-      if (!username.trim()) {
-        setError('Username is required')
+      if (username.trim().length < 3) {
+        setError('Username must be at least 3 characters')
         setLoading(false)
         return
       }
+      if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+        setError('Username can only contain letters, numbers, and underscores')
+        setLoading(false)
+        return
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { username: username.trim() },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: { username: username.trim().toLowerCase() },
         },
       })
-      if (error) setError(error.message)
-      else setMessage('Check your email to confirm your account!')
+
+      if (error) {
+        if (error.message.includes('already registered')) {
+          setError('That username is already taken')
+        } else {
+          setError(error.message)
+        }
+      } else {
+        window.location.href = '/dashboard'
+      }
     }
 
     setLoading(false)
@@ -74,26 +94,14 @@ export default function LandingPage() {
           </div>
 
           <form onSubmit={handleAuth} className="flex flex-col gap-3">
-            {mode === 'signup' && (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">Username</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="yourname"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500"
-                  required
-                />
-              </div>
-            )}
             <div>
-              <label className="text-xs font-medium text-zinc-400 block mb-1">Email</label>
+              <label className="text-xs font-medium text-zinc-400 block mb-1">Username</label>
               <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                placeholder="yourname"
+                autoComplete="username"
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500"
                 required
               />
@@ -105,13 +113,13 @@ export default function LandingPage() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-violet-500"
                 required
               />
             </div>
 
             {error && <p className="text-red-400 text-xs">{error}</p>}
-            {message && <p className="text-green-400 text-xs">{message}</p>}
 
             <button
               type="submit"
