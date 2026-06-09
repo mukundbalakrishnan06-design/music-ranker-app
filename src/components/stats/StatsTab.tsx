@@ -40,8 +40,7 @@ export default function StatsTab({ userId }: Props) {
     return { album: a, avg, count: ratings.length }
   }).filter(x => x.avg !== null) as { album: AlbumWithTracks; avg: number; count: number }[]
 
-  const topAlbums = [...albumAvgs].sort((a, b) => b.avg - a.avg).slice(0, 5)
-  const bottomAlbums = [...albumAvgs].sort((a, b) => a.avg - b.avg).slice(0, 3)
+  const topAlbums = [...albumAvgs].sort((a, b) => b.avg - a.avg)
 
   const topTracks = albums.flatMap(a =>
     a.tracks.map(t => ({
@@ -50,21 +49,11 @@ export default function StatsTab({ userId }: Props) {
       rating: t.ratings.find(r => r.user_id === userId)?.rating ?? null,
     }))
   ).filter(x => x.rating !== null)
-    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-    .slice(0, 5) as { track: AlbumWithTracks['tracks'][0]; album: AlbumWithTracks; rating: number }[]
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)) as { track: AlbumWithTracks['tracks'][0]; album: AlbumWithTracks; rating: number }[]
 
   const overallAvg = allRatings.length ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null
   const totalRated = allRatings.length
   const totalTracks = albums.reduce((s, a) => s + a.tracks.length, 0)
-
-  // Rating distribution buckets (0-1, 1-2, ..., 9-10)
-  const buckets = Array.from({ length: 10 }, (_, i) => ({
-    label: `${i}–${i + 1}`,
-    count: allRatings.filter(r => r >= i && r < i + 1).length,
-  }))
-  // handle exactly 10
-  buckets[9].count += allRatings.filter(r => r === 10).length
-  const maxBucket = Math.max(...buckets.map(b => b.count), 1)
 
   if (albums.length === 0) {
     return (
@@ -76,14 +65,9 @@ export default function StatsTab({ userId }: Props) {
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-zinc-100">Stats</h2>
-        <p className="text-sm text-zinc-500 mt-0.5">Your listening and rating breakdown</p>
-      </div>
-
+    <div className="flex flex-col h-[calc(100vh-10rem)]">
       {/* Overview cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 shrink-0">
         {[
           { label: 'Albums', value: albums.length },
           { label: 'Tracks', value: totalTracks },
@@ -97,117 +81,73 @@ export default function StatsTab({ userId }: Props) {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Rating distribution */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-4">Rating Distribution</h3>
-          {allRatings.length === 0 ? (
-            <p className="text-zinc-600 text-sm">No ratings yet</p>
-          ) : (
-            <div className="flex items-end gap-1 h-32">
-              {buckets.map(b => (
-                <div key={b.label} className="flex flex-col items-center gap-1 flex-1">
-                  <div
-                    className="w-full bg-violet-600 rounded-t transition-all"
-                    style={{ height: `${(b.count / maxBucket) * 100}%`, minHeight: b.count > 0 ? 4 : 0 }}
-                  />
-                  <span className="text-[10px] text-zinc-600">{b.label.split('–')[0]}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Top tracks */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-3">Top Tracks</h3>
-          {topTracks.length === 0 ? (
-            <p className="text-zinc-600 text-sm">No rated tracks yet</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {topTracks.map(({ track, album, rating }, i) => {
-                const tier = getTier(rating)
-                return (
-                  <div key={track.id} className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-600 w-4 text-right">{i + 1}</span>
-                    <div className="relative w-7 h-7 rounded overflow-hidden bg-zinc-800 shrink-0">
-                      {album.cover_url ? (
-                        <Image src={album.cover_url} alt={album.title} fill className="object-cover" sizes="28px" />
-                      ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-[10px]">♪</div>}
+      {/* Two scrollable boxes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
+        {/* Best Albums */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col min-h-0">
+          <h3 className="text-sm font-semibold text-zinc-300 px-4 pt-4 pb-3 shrink-0">Best Albums</h3>
+          <div className="overflow-y-auto flex-1 px-4 pb-4">
+            {topAlbums.length === 0 ? (
+              <p className="text-zinc-600 text-sm">No rated albums yet</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {topAlbums.map(({ album, avg }, i) => {
+                  const tier = getTier(avg)
+                  return (
+                    <div key={album.id} className="flex items-center gap-2">
+                      <span className="text-xs text-zinc-600 w-4 text-right shrink-0">{i + 1}</span>
+                      <div className="relative w-8 h-8 rounded overflow-hidden bg-zinc-800 shrink-0">
+                        {album.cover_url ? (
+                          <Image src={album.cover_url} alt={album.title} fill className="object-cover" sizes="32px" />
+                        ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">♪</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-zinc-200 truncate">{album.title}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">{album.artist}</p>
+                      </div>
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${tier?.bg ?? 'bg-zinc-700'} ${tier?.color ?? 'text-zinc-300'}`}>
+                        {avg.toFixed(2)}
+                      </span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-zinc-200 truncate">{track.title}</p>
-                      <p className="text-[10px] text-zinc-500 truncate">{album.artist}</p>
-                    </div>
-                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${tier?.bg ?? 'bg-zinc-700'} ${tier?.color ?? 'text-zinc-300'}`}>
-                      {rating.toFixed(1)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Top albums */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-zinc-300 mb-3">Best Albums</h3>
-          {topAlbums.length === 0 ? (
-            <p className="text-zinc-600 text-sm">No rated albums yet</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {topAlbums.map(({ album, avg }, i) => {
-                const tier = getTier(avg)
-                return (
-                  <div key={album.id} className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-600 w-4 text-right">{i + 1}</span>
-                    <div className="relative w-8 h-8 rounded overflow-hidden bg-zinc-800 shrink-0">
-                      {album.cover_url ? (
-                        <Image src={album.cover_url} alt={album.title} fill className="object-cover" sizes="32px" />
-                      ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">♪</div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-zinc-200 truncate">{album.title}</p>
-                      <p className="text-[10px] text-zinc-500 truncate">{album.artist}</p>
-                    </div>
-                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${tier?.bg ?? 'bg-zinc-700'} ${tier?.color ?? 'text-zinc-300'}`}>
-                      {avg.toFixed(2)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Lowest albums */}
-        {bottomAlbums.length > 0 && albumAvgs.length >= 3 && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-zinc-300 mb-3">Lowest Rated</h3>
-            <div className="flex flex-col gap-2">
-              {bottomAlbums.map(({ album, avg }, i) => {
-                const tier = getTier(avg)
-                return (
-                  <div key={album.id} className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-600 w-4 text-right">{i + 1}</span>
-                    <div className="relative w-8 h-8 rounded overflow-hidden bg-zinc-800 shrink-0">
-                      {album.cover_url ? (
-                        <Image src={album.cover_url} alt={album.title} fill className="object-cover" sizes="32px" />
-                      ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">♪</div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-zinc-200 truncate">{album.title}</p>
-                      <p className="text-[10px] text-zinc-500 truncate">{album.artist}</p>
-                    </div>
-                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${tier?.bg ?? 'bg-zinc-700'} ${tier?.color ?? 'text-zinc-300'}`}>
-                      {avg.toFixed(2)}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Top Tracks */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col min-h-0">
+          <h3 className="text-sm font-semibold text-zinc-300 px-4 pt-4 pb-3 shrink-0">Top Tracks</h3>
+          <div className="overflow-y-auto flex-1 px-4 pb-4">
+            {topTracks.length === 0 ? (
+              <p className="text-zinc-600 text-sm">No rated tracks yet</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {topTracks.map(({ track, album, rating }, i) => {
+                  const tier = getTier(rating)
+                  return (
+                    <div key={track.id} className="flex items-center gap-2">
+                      <span className="text-xs text-zinc-600 w-4 text-right shrink-0">{i + 1}</span>
+                      <div className="relative w-7 h-7 rounded overflow-hidden bg-zinc-800 shrink-0">
+                        {album.cover_url ? (
+                          <Image src={album.cover_url} alt={album.title} fill className="object-cover" sizes="28px" />
+                        ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-[10px]">♪</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-zinc-200 truncate">{track.title}</p>
+                        <p className="text-[10px] text-zinc-500 truncate">{album.artist}</p>
+                      </div>
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded shrink-0 ${tier?.bg ?? 'bg-zinc-700'} ${tier?.color ?? 'text-zinc-300'}`}>
+                        {rating.toFixed(1)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
