@@ -29,17 +29,9 @@ function RatingSlider({ track, userId, onRate }: {
 }) {
   const existing = track.ratings.find(r => r.user_id === userId)
   const [value, setValue] = useState<number>(existing?.rating ?? 0)
-  const [rated, setRated] = useState(!!existing)
-
-  function handleChange(v: number) {
-    setValue(v)
-  }
 
   function handleCommit() {
-    if (value > 0) {
-      onRate(track.id, value)
-      setRated(true)
-    }
+    if (value > 0) onRate(track.id, value)
   }
 
   const color = value >= 9 ? '#facc15' : value >= 7.5 ? '#4ade80' : value >= 6 ? '#60a5fa' : value >= 4.5 ? '#c084fc' : value >= 3 ? '#fb923c' : '#f87171'
@@ -52,7 +44,7 @@ function RatingSlider({ track, userId, onRate }: {
         max={10}
         step={0.5}
         value={value}
-        onChange={e => handleChange(parseFloat(e.target.value))}
+        onChange={e => setValue(parseFloat(e.target.value))}
         onMouseUp={handleCommit}
         onTouchEnd={handleCommit}
         className="flex-1 h-1.5"
@@ -64,6 +56,70 @@ function RatingSlider({ track, userId, onRate }: {
       >
         {value > 0 ? value.toFixed(1) : '—'}
       </span>
+    </div>
+  )
+}
+
+function TrackRow({ track, userId, onRate, editMode, onSaveTrack, onDeleteTrack }: {
+  track: Track & { ratings: TrackRating[] }
+  userId: string
+  onRate: (trackId: string, rating: number) => void
+  editMode: boolean
+  onSaveTrack: (trackId: string, title: string) => void
+  onDeleteTrack: (trackId: string) => void
+}) {
+  const [editTitle, setEditTitle] = useState(track.title)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800/50 group">
+      <span className="text-xs text-zinc-600 w-5 text-right shrink-0">{track.track_number}</span>
+      <div className="flex-1 min-w-0">
+        {editMode ? (
+          <input
+            value={editTitle}
+            onChange={e => setEditTitle(e.target.value)}
+            onBlur={() => onSaveTrack(track.id, editTitle)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-100 focus:outline-none focus:border-violet-500"
+          />
+        ) : (
+          <>
+            <p className="text-sm text-zinc-200 truncate">{track.title}</p>
+            {track.duration_ms && (
+              <p className="text-xs text-zinc-600">{formatDuration(track.duration_ms)}</p>
+            )}
+          </>
+        )}
+      </div>
+      {editMode ? (
+        confirmDelete ? (
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => onDeleteTrack(track.id)}
+              className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-medium"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-200 text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="shrink-0 p-1.5 rounded text-zinc-600 hover:text-red-400 hover:bg-zinc-800"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )
+      ) : (
+        <div className="w-44 shrink-0">
+          <RatingSlider track={track} userId={userId} onRate={onRate} />
+        </div>
+      )}
     </div>
   )
 }
@@ -83,7 +139,7 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
     .filter((r): r is number => r !== undefined)
   const avg = userRatings.length ? (userRatings.reduce((a, b) => a + b, 0) / userRatings.length) : null
 
-  async function saveEdit() {
+  async function saveAlbumEdit() {
     setSaving(true)
     await supabase.from('albums').update({
       title: editTitle,
@@ -93,6 +149,17 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
     }).eq('id', album.id)
     setSaving(false)
     setEditMode(false)
+    onUpdated()
+  }
+
+  async function saveTrack(trackId: string, title: string) {
+    if (!title.trim()) return
+    await supabase.from('tracks').update({ title: title.trim() }).eq('id', trackId)
+    onUpdated()
+  }
+
+  async function deleteTrack(trackId: string) {
+    await supabase.from('tracks').delete().eq('id', trackId)
     onUpdated()
   }
 
@@ -137,6 +204,7 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
                     placeholder="Genre"
                   />
                 </div>
+                <p className="text-xs text-zinc-500">Track names are editable in the list below</p>
               </div>
             ) : (
               <>
@@ -158,7 +226,7 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
           <div className="flex items-center gap-2 shrink-0">
             {editMode ? (
               <button
-                onClick={saveEdit}
+                onClick={saveAlbumEdit}
                 disabled={saving}
                 className="p-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white transition-colors"
               >
@@ -174,31 +242,19 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
             )}
             {confirmDelete ? (
               <div className="flex items-center gap-1">
-                <button
-                  onClick={onDelete}
-                  className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition-colors"
-                >
+                <button onClick={onDelete} className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-medium transition-colors">
                   Confirm
                 </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="px-2 py-1 rounded-lg text-zinc-400 hover:text-zinc-200 text-xs transition-colors"
-                >
+                <button onClick={() => setConfirmDelete(false)} className="px-2 py-1 rounded-lg text-zinc-400 hover:text-zinc-200 text-xs transition-colors">
                   Cancel
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
-              >
+              <button onClick={() => setConfirmDelete(true)} className="p-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="p-2 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
-            >
+            <button onClick={onClose} className="p-2 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -206,6 +262,9 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
 
         {/* Tracks */}
         <div className="overflow-y-auto flex-1 p-2">
+          {editMode && (
+            <p className="text-xs text-zinc-500 px-3 py-2">Edit track names inline · click trash to remove a track</p>
+          )}
           {album.tracks.length === 0 ? (
             <p className="text-zinc-600 text-sm text-center py-8">No tracks</p>
           ) : (
@@ -213,21 +272,15 @@ export default function AlbumModal({ album, userId, onClose, onRate, onDelete, o
               {album.tracks
                 .sort((a, b) => a.track_number - b.track_number)
                 .map(track => (
-                  <div
+                  <TrackRow
                     key={track.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-zinc-800/50 group"
-                  >
-                    <span className="text-xs text-zinc-600 w-5 text-right shrink-0">{track.track_number}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-zinc-200 truncate">{track.title}</p>
-                      {track.duration_ms && (
-                        <p className="text-xs text-zinc-600">{formatDuration(track.duration_ms)}</p>
-                      )}
-                    </div>
-                    <div className="w-44 shrink-0">
-                      <RatingSlider track={track} userId={userId} onRate={onRate} />
-                    </div>
-                  </div>
+                    track={track}
+                    userId={userId}
+                    onRate={onRate}
+                    editMode={editMode}
+                    onSaveTrack={saveTrack}
+                    onDeleteTrack={deleteTrack}
+                  />
                 ))}
             </div>
           )}

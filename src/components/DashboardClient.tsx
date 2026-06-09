@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { Profile } from '@/types'
-import { Music, BarChart3, TrendingUp, LogOut, ExternalLink } from 'lucide-react'
+import { Music, BarChart3, LogOut, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import LibraryTab from './library/LibraryTab'
-import RankingsTab from './rankings/RankingsTab'
 import StatsTab from './stats/StatsTab'
 
 interface Props {
@@ -14,7 +13,7 @@ interface Props {
   profile: Profile | null
 }
 
-type Tab = 'library' | 'rankings' | 'stats'
+type Tab = 'library' | 'stats'
 
 export default function DashboardClient({ user, profile }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('library')
@@ -30,7 +29,6 @@ export default function DashboardClient({ user, profile }: Props) {
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'library', label: 'Library', icon: <Music className="w-4 h-4" /> },
-    { key: 'rankings', label: 'Rankings', icon: <TrendingUp className="w-4 h-4" /> },
     { key: 'stats', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
   ]
 
@@ -95,7 +93,6 @@ export default function DashboardClient({ user, profile }: Props) {
       <main className="flex-1 px-6 py-6">
         <div className="max-w-6xl mx-auto">
           {activeTab === 'library' && <LibraryTab userId={user.id} />}
-          {activeTab === 'rankings' && <RankingsTab userId={user.id} />}
           {activeTab === 'stats' && <StatsTab userId={user.id} />}
         </div>
       </main>
