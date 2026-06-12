@@ -54,8 +54,9 @@ export default function SpotifyTab({ profile }: Props) {
         return
       }
       const data = await res.json()
-      if (viewType === 'tracks') setTracks(data.items ?? [])
-      else setArtists(data.items ?? [])
+      const items = Array.isArray(data.items) ? data.items : []
+      if (viewType === 'tracks') setTracks(items)
+      else setArtists(items)
     } finally {
       setLoading(false)
     }
@@ -202,31 +203,39 @@ export default function SpotifyTab({ profile }: Props) {
             </div>
           ) : (
             <div className="divide-y divide-zinc-800/50">
-              {artists.map((artist, i) => (
+              {artists.map((artist, i) => {
+                const imageUrl = artist.images?.[0]?.url ?? null
+                const genres = Array.isArray(artist.genres) ? artist.genres.slice(0, 3).join(', ') : ''
+                const followers = artist.followers?.total ?? null
+                const popularity = artist.popularity ?? 0
+                return (
                 <div key={artist.id} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors">
                   <span className="text-sm text-zinc-600 w-6 text-right shrink-0 font-mono">{i + 1}</span>
                   <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 shrink-0">
-                    {artist.images[0]?.url ? (
-                      <img src={artist.images[0].url} alt={artist.name} className="w-full h-full object-cover" />
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={artist.name} className="w-full h-full object-cover" />
                     ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-lg">♪</div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-zinc-100 truncate">{artist.name}</p>
                     <p className="text-xs text-zinc-500 truncate capitalize">
-                      {artist.genres.slice(0, 3).join(', ') || 'No genres'}
+                      {genres || 'No genres'}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-xs text-zinc-500">{artist.followers.total.toLocaleString()} followers</p>
+                    {followers !== null && (
+                      <p className="text-xs text-zinc-500">{followers.toLocaleString()} followers</p>
+                    )}
                     <div className="flex items-center gap-1 mt-0.5">
                       <div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#1DB954] rounded-full" style={{ width: `${artist.popularity}%` }} />
+                        <div className="h-full bg-[#1DB954] rounded-full" style={{ width: `${popularity}%` }} />
                       </div>
-                      <span className="text-[10px] text-zinc-600 w-6">{artist.popularity}</span>
+                      <span className="text-[10px] text-zinc-600 w-6">{popularity}</span>
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
