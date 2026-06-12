@@ -13,56 +13,41 @@ export default function LandingPage() {
 
   const supabase = createClient()
 
-  function toEmail(u: string) {
-    return `${u.trim().toLowerCase()}@example.com`
-  }
-
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const email = toEmail(username)
+    const clean = username.trim().toLowerCase()
 
     if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setError('Invalid username or password')
-      } else {
-        window.location.href = '/dashboard'
-      }
-    } else {
-      if (username.trim().length < 3) {
-        setError('Username must be at least 3 characters')
-        setLoading(false)
-        return
-      }
-      if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
-        setError('Username can only contain letters, numbers, and underscores')
-        setLoading(false)
-        return
-      }
-
-      const { error } = await supabase.auth.signUp({
-        email,
+      // Login: derive the same internal email used at signup
+      const { error } = await supabase.auth.signInWithPassword({
+        email: `${clean}@musicranker.internal`,
         password,
-        options: {
-          data: { username: username.trim().toLowerCase() },
-        },
       })
+      if (error) setError('Invalid username or password')
+      else window.location.href = '/dashboard'
 
-      if (error) {
-        if (error.message.includes('already registered') || error.message.includes('already exists')) {
-          setError('That username is already taken')
-        } else if (error.message.includes('rate limit') || error.message.includes('too many')) {
-          setError('Too many attempts, please wait a few minutes and try again')
-        } else if (error.message.includes('password') || error.message.includes('Password')) {
-          setError('Password must be at least 6 characters')
-        } else {
-          setError('Something went wrong, please try again')
-        }
+    } else {
+      // Signup: use server-side admin API to avoid email domain validation
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: clean, password }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? 'Something went wrong, please try again')
       } else {
-        window.location.href = '/dashboard'
+        // Account created — now sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: `${clean}@musicranker.internal`,
+          password,
+        })
+        if (signInError) setError('Account created — please log in')
+        else window.location.href = '/dashboard'
       }
     }
 
