@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function POST() {
   const supabase = await createClient()
@@ -7,7 +8,12 @@ export async function POST() {
 
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
-  await supabase.from('profiles').update({
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  await admin.from('profiles').update({
     spotify_access_token: null,
     spotify_refresh_token: null,
     spotify_token_expires_at: null,

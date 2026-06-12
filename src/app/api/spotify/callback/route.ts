@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenRes.json()
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000)
 
-  // Save tokens to the user's profile
+  // Get current user via cookie-based client
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -43,12 +44,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/?error=not_logged_in`)
   }
 
-  await supabase.from('profiles').update({
+  // Use admin client to bypass RLS when saving tokens
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { error: updateError } = await admin.from('profiles').update({
     spotify_access_token: tokens.access_token,
     spotify_refresh_token: tokens.refresh_token,
     spotify_token_expires_at: expiresAt.toISOString(),
     spotify_connected: true,
   }).eq('id', user.id)
+
+  if (updateError) {
+    console.error('Failed to save Spotify tokens:', updateError)
+    return NextResponse.redirect(`${origin}/dashboard?spotify_error=save_failed`)
+  }
 
   return NextResponse.redirect(`${origin}/dashboard?spotify_connected=true`)
 }
