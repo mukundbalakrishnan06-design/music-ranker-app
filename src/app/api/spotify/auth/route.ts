@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const clientId = process.env.SPOTIFY_CLIENT_ID!
-  const redirectUri = process.env.SPOTIFY_REDIRECT_URI!
+  const origin = new URL(request.url).origin
+  const redirectUri = `${origin}/api/spotify/callback`
 
   const scope = 'user-top-read'
   const state = crypto.randomUUID()
