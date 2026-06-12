@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import Image from 'next/image'
 import { Profile } from '@/types'
 
 interface Props {
@@ -181,7 +180,7 @@ export default function SpotifyTab({ profile }: Props) {
                   <span className="text-sm text-zinc-600 w-6 text-right shrink-0 font-mono">{i + 1}</span>
                   <div className="relative w-10 h-10 rounded overflow-hidden bg-zinc-800 shrink-0">
                     {track.album.images[0]?.url ? (
-                      <Image src={track.album.images[0].url} alt={track.name} fill className="object-cover" sizes="40px" />
+                      <img src={track.album.images[0].url} alt={track.name} className="w-full h-full object-cover" />
                     ) : <div className="w-full h-full flex items-center justify-center text-zinc-600">♪</div>}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -208,7 +207,7 @@ export default function SpotifyTab({ profile }: Props) {
                   <span className="text-sm text-zinc-600 w-6 text-right shrink-0 font-mono">{i + 1}</span>
                   <div className="relative w-10 h-10 rounded-full overflow-hidden bg-zinc-800 shrink-0">
                     {artist.images[0]?.url ? (
-                      <Image src={artist.images[0].url} alt={artist.name} fill className="object-cover" sizes="40px" />
+                      <img src={artist.images[0].url} alt={artist.name} className="w-full h-full object-cover" />
                     ) : <div className="w-full h-full flex items-center justify-center text-zinc-600 text-lg">♪</div>}
                   </div>
                   <div className="flex-1 min-w-0">
