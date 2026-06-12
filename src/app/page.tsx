@@ -13,7 +13,6 @@ export default function LandingPage() {
 
   const supabase = createClient()
 
-  // Supabase requires an email — we derive one from the username internally
   function toEmail(u: string) {
     return `${u.trim().toLowerCase()}@example.com`
   }
@@ -53,10 +52,14 @@ export default function LandingPage() {
       })
 
       if (error) {
-        if (error.message.includes('already registered')) {
+        if (error.message.includes('already registered') || error.message.includes('already exists')) {
           setError('That username is already taken')
+        } else if (error.message.includes('rate limit') || error.message.includes('too many')) {
+          setError('Too many attempts, please wait a few minutes and try again')
+        } else if (error.message.includes('password') || error.message.includes('Password')) {
+          setError('Password must be at least 6 characters')
         } else {
-          setError(error.message)
+          setError('Something went wrong, please try again')
         }
       } else {
         window.location.href = '/dashboard'
