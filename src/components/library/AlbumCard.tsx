@@ -48,11 +48,11 @@ export default function AlbumCard({ album, userId, onClick }: Props) {
         )}
       </div>
       <div className="px-0.5">
-        <p className="text-sm font-medium text-zinc-100 truncate">{album.title}</p>
-        <p className="text-xs text-zinc-500 truncate">{album.artist}</p>
-        <p className="text-xs text-zinc-600 mt-0.5">
+        <p className="text-sm font-semibold text-zinc-100 truncate">{album.title}</p>
+        <p className="text-sm text-zinc-400 truncate">{album.artist}</p>
+        <p className="text-xs text-zinc-500 mt-0.5">
           {ratedCount}/{album.tracks.length} rated
-          {avg !== null && <span className="text-zinc-400"> · {avg.toFixed(1)}</span>}
+          {avg !== null && <span className="text-zinc-300 font-medium"> · {avg.toFixed(1)}</span>}
         </p>
       </div>
     </button>
